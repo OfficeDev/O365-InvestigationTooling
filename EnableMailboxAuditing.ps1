@@ -1,4 +1,4 @@
-﻿#This script will enable non-owner mailbox access auditing on every mailbox in your tenancy
+#This script will enable non-owner mailbox access auditing on every mailbox in your tenancy
 #First, let's get us a cred!
 $userCredential = Get-Credential
 
@@ -7,8 +7,7 @@ $ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri
 Import-PSSession $ExoSession
 
 #Enable global audit logging
-Get-Mailbox -ResultSize Unlimited -Filter {RecipientTypeDetails -eq "UserMailbox"} | Set-Mailbox -AuditEnabled $true -AuditLogAgeLimit 365 -AuditOwner Create,HardDelete,MailboxLogin,MoveToDeletedItems,SoftDelete,Update
+Get-Mailbox -ResultSize Unlimited -Filter {RecipientTypeDetails -eq "UserMailbox" -or RecipientTypeDetails -eq "SharedMailbox" -or RecipientTypeDetails -eq "RoomMailbox" -or RecipientTypeDetails -eq "DiscoveryMailbox"}| Set-Mailbox -AuditEnabled $true -AuditLogAgeLimit 365 -AuditOwner Create,HardDelete,MailboxLogin,MoveToDeletedItems,SoftDelete,Update
 
 #Double-Check It!
 Get-Mailbox | Select Name, AuditEnabled, AuditLogAgeLimit
-
