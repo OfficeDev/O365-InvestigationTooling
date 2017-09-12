@@ -66,7 +66,7 @@ Function Get-GlobalConfig( $configFile)
     return $config;
 }
 
-$globalConfigFile="ConfigForO365Investigations.json";
+$globalConfigFile=".\ConfigForO365Investigations.json";
 $globalConfig = Get-GlobalConfig $globalConfigFile
 
 #Pre-reqs for REST API calls
@@ -93,7 +93,6 @@ $days = @()
 
 if ($globalConfig.DateToPull){
     $days = $globalConfig.DateToPull
-
 }
 else
 {
@@ -125,20 +124,20 @@ $rawRef = @()
 #Let's make sure we have the Activity API subscriptions turned on
 $subs = Invoke-WebRequest -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/list" | Select Content
 
-if (!$subs)
-    {
-        Write-Host "Looks like we need to turn on your subscriptions now."
-        Write-Host "#####################################################"
+if (!$subs -or $subs.Content -eq "[]")
+{
+    Write-Host "Looks like we need to turn on your subscriptions now."
+    Write-Host "#####################################################"
                 
-        #Let's make sure the subscriptions are started
-        foreach ($wl in $workLoads)
-            {
-                Invoke-RestMethod -Method Post -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$wl"
-            }
+    #Let's make sure the subscriptions are started
+    foreach ($wl in $workLoads)
+        {
+            Invoke-RestMethod -Method Post -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$wl"
+        }
         
-        Write-Host "#####################################################"
+    Write-Host "#####################################################"
 
-    }
+}
 
 #Let's go get some datums! First, let's construct some query parameters
 foreach ($wl in $workLoads)
@@ -201,13 +200,13 @@ Write-Host "You have this many total blobs in your Activity API: " -NoNewline; W
 
 foreach ($day in $days)
 {
-    $dayCount = $blobs | Where-Object {($_.contentCreated -match $day)}
+    $dayCount = @($blobs | Where-Object {($_.contentCreated -match $day)})
     Write-Host "Count of blobs on " -NoNewline; Write-Host $day -NoNewLine; Write-Host " : " -NoNewLine; Write-Host $dayCount.Count -ForegroundColor Green
 }
 
 foreach ($wl in $workLoads)
 {
-    $wlCount = $blobs | Where-Object {($_.contentType -eq $wl)}
+    $wlCount = @($blobs | Where-Object {($_.contentType -eq $wl)})
     Write-Host "Count of blobs for " -NoNewline; Write-Host $wl -NoNewLine; Write-Host " : " -NoNewLine; Write-Host $wlCount.Count -ForegroundColor Green
 
 }
@@ -232,6 +231,7 @@ function Export-LocalFiles ($blobs) {
 
     $body = @{grant_type="client_credentials";resource=$resource;client_id=$ClientID;client_secret=$ClientSecret}
     $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body
+    $oauthExpiration = [datetime]::Now.AddSeconds($oauth.expires_in)
 
     #Let's put the oauth token in the header, where it belongs
     $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}
@@ -239,32 +239,38 @@ function Export-LocalFiles ($blobs) {
     
     #Go Get the Content!
     for ($i = 0; $i -le $blobs.Length -1; $i++) 
-        { 
-            Write-Host "Current token lifespan is" $timeLeft
-            if ($timeLeft -lt 100) { Write-Host "Nearing token expiration, acquiring a new one."; $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body; $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}; }
-            
-            if ($localFiles -like "*" + $blobs[$i].contentId + "*") 
-            { 
-                Write-Output "Looks like we already have this blob locally."; 
-            }
-            else
-            {
-                #Get the datums
-                $thisBlobdata = Invoke-WebRequest -Headers $headerParams -Uri $blobs[$i].contentUri
-        
-                #Write it to JSON
-                $thisBlobdata.Content | Out-File (".\JSON\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".json")
-        
-                #Write it to CSV
-                $altFormat = $thisBlobdata.Content | ConvertFrom-Json
-                $altFormat | Export-Csv -Path (".\CSV\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".csv") -NoTypeInformation
-
-                Write-Host "Writing file #: " -NoNewLine; Write-Host ($i + 1) -ForegroundColor Green -NoNewline; Write-Host " out of " -NoNewline; Write-Host $blobs.Length -ForegroundColor Yellow -NoNewline; Write-Host ". You have " -NoNewline; Write-Host ($oauth.expires_on - (Get-Date -UFormat "%s")) -NoNewline; Write-Host " seconds left on your oauth token lifespan.";  
-
-            }
-
-            $timeLeft = (($oauth.expires_on - (Get-Date -UFormat "%s"))- 28800)
+    { 
+        $timeleft = $oauthExpiration - [datetime]::Now
+        if ($timeLeft.TotalSeconds -lt 100) 
+        {
+            Write-Host "Nearing token expiration, acquiring a new one."; 
+            $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body; 
+            $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}; 
+            $oauthExpiration = [datetime]::Now.AddSeconds($oauth.expires_in); 
+            Write-Host "New token lifespan is $oauthExpiration"; 
         }
+            
+        if ($localFiles -like "*" + $blobs[$i].contentId + "*") 
+        { 
+            Write-Output "Looks like we already have this blob locally."; 
+        }
+        else
+        {
+            #Get the datums
+            $thisBlobdata = Invoke-WebRequest -Headers $headerParams -Uri $blobs[$i].contentUri
+        
+            #Write it to JSON
+            $thisBlobdata.Content | Out-File (".\JSON\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".json")
+        
+            #Write it to CSV
+            $altFormat = $thisBlobdata.Content | ConvertFrom-Json
+            $altFormat | Export-Csv -Path (".\CSV\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".csv") -NoTypeInformation
+
+            Write-Host "Writing file #: " -NoNewLine; Write-Host ($i + 1) -ForegroundColor Green -NoNewline; Write-Host " out of " -NoNewline; Write-Host $blobs.Length -ForegroundColor Yellow -NoNewline; Write-Host ". You have " -NoNewline; Write-Host ($timeleft.TotalSeconds) -NoNewline; Write-Host " seconds left on your oauth token lifespan.";  
+
+        }
+
+    }
 
 }
 
@@ -358,6 +364,7 @@ function Export-MySQL ($blobs) {
 
     $body = @{grant_type="client_credentials";resource=$resource;client_id=$ClientID;client_secret=$ClientSecret}
     $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body
+    $oauthExpiration = [datetime]::Now.AddSeconds($oauth.expires_in)
 
     #Let's put the oauth token in the header, where it belongs
     $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}
@@ -365,7 +372,15 @@ function Export-MySQL ($blobs) {
     #Go Get the Content!
     for ($i = 0; $i -le $blobs.Length -1; $i++) 
     { 
-        if ($timeLeft -lt 100) { Write-Host "Nearing token expiration, acquiring a new one."; $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body; $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}; Write-Host "New token lifespan is" $oauth.expires_on; }
+        $timeleft = $oauthExpiration - [datetime]::Now
+        if ($timeLeft.TotalSeconds -lt 100) 
+        {
+            Write-Host "Nearing token expiration, acquiring a new one."; 
+            $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body; 
+            $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}; 
+            $oauthExpiration = [datetime]::Now.AddSeconds($oauth.expires_in); 
+            Write-Host "New token lifespan is $oauthExpiration"; 
+        }
         #Get the datums
         $thisBlobdata = Invoke-WebRequest -Headers $headerParams -Uri $blobs[$i].contentUri
         
@@ -375,7 +390,6 @@ function Export-MySQL ($blobs) {
         if ($blobs[$i].ContentType -eq "Audit.SharePoint") { $SPOmegaBlob += $altFormat; }
         if ($blobs[$i].ContentType -eq "Audit.Exchange") { $EXOmegaBlob += $altFormat; }
         if ($blobs[$i].ContentType -eq "Audit.AzureActiveDirectory") { $AADmegaBlob += $altFormat; }
-        $timeLeft = (($oauth.expires_on - (Get-Date -UFormat "%s"))- 28800)
 
     }
     #Stick all the records in this megablob into a SQL database
@@ -428,6 +442,7 @@ function Export-AzureSQL ($blobs) {
 
     $body = @{grant_type="client_credentials";resource=$resource;client_id=$ClientID;client_secret=$ClientSecret}
     $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body
+    $oauthExpiration = [datetime]::Now.AddSeconds($oauth.expires_in)
 
     #Let's put the oauth token in the header, where it belongs
     $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}
@@ -435,7 +450,15 @@ function Export-AzureSQL ($blobs) {
     #Go Get the Content!
     for ($i = 0; $i -le $blobs.Length -1; $i++) 
     { 
-        if ($timeLeft -lt 100) { Write-Host "Nearing token expiration, acquiring a new one."; $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body; $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}; Write-Host "New token lifespan is" $oauth.expires_on; }
+        $timeleft = $oauthExpiration - [datetime]::Now
+        if ($timeLeft.TotalSeconds -lt 100) 
+        {
+            Write-Host "Nearing token expiration, acquiring a new one."; 
+            $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body; 
+            $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}; 
+            $oauthExpiration = [datetime]::Now.AddSeconds($oauth.expires_in); 
+            Write-Host "New token lifespan is $oauthExpiration"; 
+        }
         #Get the datums
         $thisBlobdata = Invoke-WebRequest -Headers $headerParams -Uri $blobs[$i].contentUri
         
@@ -445,9 +468,6 @@ function Export-AzureSQL ($blobs) {
         if ($blobs[$i].ContentType -eq "Audit.SharePoint") { $SPOmegaBlob += $altFormat; }
         if ($blobs[$i].ContentType -eq "Audit.Exchange") { $EXOmegaBlob += $altFormat; }
         if ($blobs[$i].ContentType -eq "Audit.AzureActiveDirectory") { $AADmegaBlob += $altFormat; }
-
-        $timeLeft = (($oauth.expires_on - (Get-Date -UFormat "%s"))- 28800)
-
     }
 
     #Stick all the records in this megablob into a SQL database
@@ -492,6 +512,7 @@ function Export-AzureBlob ($blobs) {
 
     $body = @{grant_type="client_credentials";resource=$resource;client_id=$ClientID;client_secret=$ClientSecret}
     $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body
+    $oauthExpiration = [datetime]::Now.AddSeconds($oauth.expires_in)
 
     #Let's put the oauth token in the header, where it belongs
     $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}
@@ -500,7 +521,15 @@ function Export-AzureBlob ($blobs) {
     for ($i = 0; $i -le $blobs.Length -1; $i++) 
     { 
         #Get the datums
-        if ($timeLeft -lt 100) { Write-Host "Nearing token expiration, acquiring a new one."; $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body; $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}; Write-Host "New token lifespan is" $oauth.expires_on; }
+        $timeleft = $oauthExpiration - [datetime]::Now
+        if ($timeLeft.TotalSeconds -lt 100) 
+        {
+            Write-Host "Nearing token expiration, acquiring a new one."; 
+            $oauth = Invoke-RestMethod -Method Post -Uri $loginURL/$tenantdomain/oauth2/token?api-version=1.0 -Body $body; 
+            $headerParams  = @{'Authorization'="$($oauth.token_type) $($oauth.access_token)"}; 
+            $oauthExpiration = [datetime]::Now.AddSeconds($oauth.expires_in); 
+            Write-Host "New token lifespan is $oauthExpiration"; 
+        }
         $thisBlobdata = Invoke-WebRequest -Headers $headerParams -Uri $blobs[$i].contentUri
         
         $thisBlobName = ($blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".json")
@@ -509,8 +538,6 @@ function Export-AzureBlob ($blobs) {
 
         Get-ChildItem "c:\temp\$thisBlobName" | Set-AzureStorageBlobContent -Container $globalConfig.AzureBlobContainerName -Force
         Remove-Item "c:\temp\$thisBlobName"
-        $timeLeft = (($oauth.expires_on - (Get-Date -UFormat "%s"))- 28800)
-
     }
 
     
@@ -617,5 +644,3 @@ if ($globalConfig.StoreDataInAzureBlob -eq "True") { Export-AzureBlob $blobs; }
 
 #This will export eh data in the API to a Azure DocDB store
 if ($globalConfig.StoreDataInAzureDocDb -eq "True") { Export-AzureDocDb $blobs; }
-
-
