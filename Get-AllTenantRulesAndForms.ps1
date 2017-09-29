@@ -120,6 +120,8 @@ Write-Output "[*] Now granting the $ImpersonationAccount user ApplicationImperso
 $ImpersonationAssignmentName = -join ((65..90) + (97..122) | Get-Random -Count 10 | % {[char]$_})
 New-ManagementRoleAssignment -Name:$ImpersonationAssignmentName -Role:ApplicationImpersonation -User:$ImpersonationAccount | Out-Null
 
+Start-Sleep -Seconds 30
+
 #Get all the mailboxes
 $mailBoxes = Get-Mailbox | Select UserPrincipalName
 ("Number of mailboxes to process: " + $mailBoxes.Count.ToString())
