@@ -123,7 +123,7 @@ New-ManagementRoleAssignment -Name:$ImpersonationAssignmentName -Role:Applicatio
 Start-Sleep -Seconds 30
 
 #Get all the mailboxes
-$mailBoxes = Get-Mailbox | Select UserPrincipalName
+$mailBoxes = Get-Mailbox -ResultSize Unlimited | Select UserPrincipalName
 ("Number of mailboxes to process: " + $mailBoxes.Count.ToString())
 
 #For Every Mailbox, get all the rules and dump them to a big file
