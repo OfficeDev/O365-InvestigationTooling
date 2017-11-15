@@ -1,7 +1,8 @@
-﻿#########################################
+#########################################
 # Get-AllTenantRulesAndForms.ps1
 # 
 # Dumps all Rules and custom forms from all mailboxes in an Office 365 tenancy
+# Script requires user with Discovery Management admin role assignment (which is better than impersonation): https://technet.microsoft.com/en-us/library/dd351080(v=exchg.150).aspx
 #
 ######################################### 
 
@@ -115,12 +116,6 @@ $propertySet.Add($dateTimeCreatedProperty)
 $ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $adminCredential -Authentication Basic -AllowRedirection
 Import-PSSession $ExoSession
 
-#Let's grant this admin account temporary impersonation privileges so it can connect to all the mailboxes in the tenancy
-Write-Output "[*] Now granting the $ImpersonationAccount user ApplicationImpersonation rights!"
-$ImpersonationAssignmentName = -join ((65..90) + (97..122) | Get-Random -Count 10 | % {[char]$_})
-New-ManagementRoleAssignment -Name:$ImpersonationAssignmentName -Role:ApplicationImpersonation -User:$ImpersonationAccount | Out-Null
-
-Start-Sleep -Seconds 30
 
 #Get all the mailboxes
 $mailBoxes = Get-Mailbox | Select UserPrincipalName
@@ -153,6 +148,8 @@ foreach ($box in $mailBoxes)
         $readableactions = Convert-ByteArrays ($ruleactionsbytearray)
         $readableconditions = Convert-ByteArrays($ruleconditionsbytearray)
 
+        if ($Item.ItemClass -eq "IPM.Rule.Version2.Message") 
+        {
         $Rules += New-Object PSObject -Property @{
             User        = $box.UserPrincipalName
             RuleName    = Get-ExtendedProperty -Item $Item -Property $PidTagRuleMessageName
@@ -161,13 +158,17 @@ foreach ($box in $mailBoxes)
             State       = Get-ExtendedProperty -Item $Item -Property $PidTagRuleMessageState
             DateCreated = $Item.DateTimeCreated
             ItemClass   = $Item.ItemClass
+            }
         }
 
+        if ($Item.ItemClass -eq "IPM.Microsoft.FolderDesign.FormsDescription") 
+        {       
         $Forms += New-Object PSObject -Property @{
             User        = $box.UserPrincipalName
             FormName    = Get-ExtendedProperty -Item $Item -Property $PidTagOfflineAddressBookName
             DateCreated = $Item.DateTimeCreated
             ItemClass   = $Item.ItemClass
+            }
         }
     }
 
@@ -182,8 +183,3 @@ $Rules
 
 Write-Output "[*] These are the forms we found."
 $Forms
-
-#Remove Impersonation
-Write-Output "`r`n[*] Removing ApplicationImpersonation role from $ImpersonationAccount."
-Get-ManagementRoleAssignment -RoleAssignee $ImpersonationAccount -Role ApplicationImpersonation -RoleAssigneeType user | Remove-ManagementRoleAssignment -confirm:$false
-
