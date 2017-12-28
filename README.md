@@ -95,3 +95,6 @@ application and grant it permissions to the tenant's Management Activity API.
 [psauditing]: https://technet.microsoft.com/library/mt238501(v=exchg.160).aspx
 [apischemadocs]: https://msdn.microsoft.com/EN-US/library/office/mt607130.aspx
 [ssms]: https://www.microsoft.com/en-us/download/details.aspx?id=42299
+
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information, see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
