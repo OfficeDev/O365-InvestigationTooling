@@ -26,6 +26,6 @@ $UserGuids | Export-Csv GuidsWithPasswords.csv
 
 foreach ($guid in $UserGuids)
 {
-    Write-Host "Setting the password for " $user.ObjectId;
-    Set-MsolUserPassword –ObjectId $user.ObjectId –NewPassword $user.NewPassword -ForceChangePassword $True
+    Write-Host "Setting the password for " $guid.ObjectId;
+    Set-MsolUserPassword –ObjectId $guid.ObjectId –NewPassword $guid.NewPassword -ForceChangePassword $True
 }
