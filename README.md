@@ -18,7 +18,7 @@ AppID (`InvestigationAppID`) and AppSecret (`InvestigationAppSecret`) to enable 
 
 
 ## Prerequisites for the Activity API
-Follow the instructions in the [Management Activity API: Getting Started Guide](gettingstarted) to create a new AAD
+Follow the instructions in the [Management Activity API: Getting Started Guide][gettingstarted] to create a new AAD
 application and grant it permissions to the tenant's Management Activity API.
 
 
