@@ -82,7 +82,7 @@ application and grant it permissions to the tenant's Management Activity API.
    In the "Firewall Settings" blade, click "Add Client IP" and add the IP address of the host where you will be running
    the investigations tooling from. Save and wait for confirmation that the firewall rules have been updated.
 
-1. Use Visual Studio, or download [SQL Server Management Studio Express 2014](ssms) (for free) and connect to your new
+1. Use Visual Studio, or download [SQL Server Management Studio Express 2014][ssms] (for free) and connect to your new
    database.
 
 1. Create a new SQL database named "O365Investigations"
