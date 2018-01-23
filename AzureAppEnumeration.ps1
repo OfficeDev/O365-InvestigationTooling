@@ -11,7 +11,7 @@ foreach ($user in $users)
     $consentgrants += Get-AzureADUserOAuth2PermissionGrant -ObjectId $user.UserPrincipalName
 }
 
-$appassingments = @()
+$appassignments = @()
 foreach ($user in $users)
 {
     Write-Output "Getting app assignments for user: " $user.userPrincipalName
