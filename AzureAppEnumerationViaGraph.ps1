@@ -1,8 +1,14 @@
-﻿#Only need to run these if you don't have ADAL installed
+#Only need to run these if you don't have ADAL installed
 Install-PackageProvider -Name "NuGet"
 Register-PackageSource -Name NuGet -ProviderName NuGet -location https://www.nuget.org/api/v2/
 Get-PackageProvider -Name "NuGet" | Get-PackageSource
 Install-Package -Name "Microsoft.IdentityModel.Clients.ActiveDirectory"
+
+param
+(
+  [Parameter(Mandatory=$true)]
+  $TenantName
+)
 
 function GetAuthToken
 {
@@ -25,7 +31,7 @@ function GetAuthToken
 }
 
 #Go get an auth token for the correct domain
-$token = GetAuthToken -TenantName "[INSERT YOUR TENANT DOMAIN NAME HERE]"
+$token = GetAuthToken -TenantName $TenantName
 
 # Building Rest Api header with authorization token
 $authHeader = @{
@@ -82,4 +88,3 @@ $appassignments | Export-Csv .\appassignments_$((Get-Date).ToString('MM-dd-yyyy'
 
 #These are details about all the apps that have assigned privileges. Evaluate this for suspicious URLs and names
 $appDetails | Export-Csv .\allappdetails_$((Get-Date).ToString('MM-dd-yyyy')).csv -NoTypeInformation
-
