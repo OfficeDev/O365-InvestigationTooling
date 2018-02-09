@@ -118,7 +118,8 @@ $password = $adminCredential.GetNetworkCredential().Password
 
 #Then let's setup our EWS credential
 $exchService = New-Object Microsoft.Exchange.WebServices.Data.ExchangeService
-$exchService.Credentials = new-object System.Net.NetworkCredential($UserName, $password, "") 
+$exchService.Credentials = new-object System.Net.NetworkCredential($UserName, $password, "")
+$exchService.HttpHeaders.Add("X-AnchorMailbox", $UserName)
 
 #Setting up the O365 Exchange EWS Connection
 $exchService.Url = new-object System.Uri(("https://" + $hostName + "/EWS/Exchange.asmx")) 
@@ -167,6 +168,8 @@ foreach ($box in $mailBoxes)
 {
     Write-Host "Pulling Inbox rules and forms for: " $box.UserPrincipalName;
     $exchService.ImpersonatedUserId = New-Object Microsoft.Exchange.WebServices.Data.ImpersonatedUserId([Microsoft.Exchange.WebServices.Data.ConnectingIdType]::SmtpAddress,$box.UserPrincipalName);
+    $exchService.HttpHeaders.Remove("X-AnchorMailbox")
+    $exchService.HttpHeaders.("X-AnchorMailbox", $box.UserPrincipalName) 
 
     $itemView = New-Object Microsoft.Exchange.WebServices.Data.ItemView(100,0,[Microsoft.Exchange.WebServices.Data.OffsetBasePoint]::Beginning)
     $itemView.Traversal = [Microsoft.Exchange.WebServices.Data.ItemTraversal]::Shallow
