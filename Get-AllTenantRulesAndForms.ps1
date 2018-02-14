@@ -153,7 +153,8 @@ $propertySet.Add($dateTimeCreatedProperty)
 
 #Connect to Remote Powershell
 #This gets us connected to an Exchange remote powershell service
-$ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $adminCredential -Authentication Basic -AllowRedirection
+$connectionUri = "https://outlook.office365.com/powershell-liveid?email=" + $adminCredential.UserName
+$ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri $connectionUri -Credential $adminCredential -Authentication Basic -AllowRedirection
 Import-PSSession $ExoSession
 
 
