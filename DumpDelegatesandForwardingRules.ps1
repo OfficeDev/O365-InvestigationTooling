@@ -23,5 +23,8 @@ foreach ($User in $allUsers)
     $UserDelegates += Get-MailboxPermission -Identity $User.UserPrincipalName | Where-Object {($_.IsInherited -ne "True") -and ($_.User -notlike "*SELF*")}
 }
 
+$SMTPForwarding = Get-Mailbox -ResultSize Unlimited | select DisplayName,ForwardingAddress,ForwardingSMTPAddress,DeliverToMailboxandForward | where {$_.ForwardingSMTPAddress -ne $null}
+
 $UserInboxRules | Export-Csv MailForwardingRulesToExternalDomains.csv
 $UserDelegates | Export-Csv MailboxDelegatePermissions.csv
+$SMTPForwarding | Export-Csv Mailboxsmtpforwarding.csv
