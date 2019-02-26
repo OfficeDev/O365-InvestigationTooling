@@ -20,6 +20,6 @@ $loggedOnUsers = Search-UnifiedAuditLog -StartDate $startDate -EndDate $endDate 
 $inactiveInLastThreeMonthsUsers = @()
 $inactiveInLastThreeMonthsUsers = $allUsers.UserPrincipalName | where {$loggedOnUsers.UserIds -NotContains $_}
 
-Write-Output "The following users have no logged in for the last 90 days:"
+Write-Output "The following users have not logged in for the last 90 days:"
 Write-Output $inactiveInLastThreeMonthsUsers
 
