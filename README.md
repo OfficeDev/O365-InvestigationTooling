@@ -28,9 +28,8 @@ AppID (`InvestigationAppID`) and AppSecret (`InvestigationAppSecret`) to enable 
 
 
 ## Prerequisites for the Activity API
-Follow the instructions in the [Management Activity API: Getting Started Guide](gettingstarted) to create a new AAD
+Follow the instructions in the [Management Activity API: Getting Started Guide](https://docs.microsoft.com/en-us/office/office-365-management-api/get-started-with-office-365-management-apis) to create a new AAD
 application and grant it permissions to the tenant's Management Activity API.
-
 
 ## Prerequisites for the MySQL Store Pattern
 1. If you don't already have a MySQL database, download the [Windows MySQL

@@ -66,7 +66,8 @@ Function Get-GlobalConfig( $configFile)
     return $config;
 }
 
-$globalConfigFile=".\ConfigForO365Investigations.json";
+#UPDATE Location to the Global Config File"
+$globalConfigFile="C:\O365-InvestigationTooling\ConfigForO365Investigations.json";
 $globalConfig = Get-GlobalConfig $globalConfigFile
 
 #Pre-reqs for REST API calls
@@ -107,7 +108,8 @@ else
 $hours = @("00:00Z", "01:00Z", "02:00Z", "03:00Z", "04:00Z", "05:00Z", "06:00Z", "07:00Z", "08:00Z", "09:00Z", "10:00Z", "11:00Z", "12:00Z", "13:00Z", "14:00Z", "15:00Z", "16:00Z", "17:00Z", "18:00Z", "19:00Z", "20:00Z", "21:00Z", "22:00Z", "23:00Z", "23:59:59Z")
 foreach ($day in $days) { foreach ($hour in $hours) { $dateRange += $day + "T" + $hour; }}
 
-$workLoads = @("Audit.AzureActiveDirectory", "Audit.Exchange", "Audit.SharePoint", "Audit.General", "DLP.All")
+#$workLoads = @("Audit.AzureActiveDirectory", "Audit.Exchange", "Audit.SharePoint", "Audit.General", "DLP.All")
+$workLoads = @("Audit.Exchange", "Audit.SharePoint")
 $subs = @()
 $global:blobs = @()
 $wlCount = @()
@@ -214,19 +216,19 @@ foreach ($wl in $workLoads)
 #This will write the files from the API to the local data store.
 function Export-LocalFiles ($blobs) {
     #Let's make some output directories
-    if (! (Test-Path ".\JSON"))
+    if (! (Test-Path "$($globalConfig.LocalFileDirectory)\JSON"))
         {
-            New-Item -Path .\JSON -ItemType Directory
+            New-Item -Path "$($globalConfig.LocalFileDirectory)\JSON" -ItemType Directory
         }
 
-    if (! (Test-Path ".\CSV"))
+    if (! (Test-Path "$($globalConfig.LocalFileDirectory)\CSV"))
         {
-            New-Item -Path .\CSV -ItemType Directory
+            New-Item -Path "$($globalConfig.LocalFileDirectory)\CSV" -ItemType Directory
         }
 
     #Let's build a variable full of the files already in the local store
     $localfiles = @()
-    $localFiles = Get-ChildItem $globalConfig.LocalFileStore -Recurse | Select-Object -Property Name
+    $localFiles = Get-ChildItem "$($globalConfig.LocalFileDirectory)$($globalConfig.LocalFileStore)" -Recurse | Select-Object -Property Name
     
 
     $body = @{grant_type="client_credentials";resource=$resource;client_id=$ClientID;client_secret=$ClientSecret}
@@ -260,11 +262,11 @@ function Export-LocalFiles ($blobs) {
             $thisBlobdata = Invoke-WebRequest -Headers $headerParams -Uri $blobs[$i].contentUri
         
             #Write it to JSON
-            $thisBlobdata.Content | Out-File (".\JSON\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".json")
+            $thisBlobdata.Content | Out-File ("$($globalConfig.LocalFileDirectory)\JSON\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".json")
         
             #Write it to CSV
             $altFormat = $thisBlobdata.Content | ConvertFrom-Json
-            $altFormat | Export-Csv -Path (".\CSV\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".csv") -NoTypeInformation
+            $altFormat | Export-Csv -Path ("$($globalConfig.LocalFileDirectory)\CSV\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".csv") -NoTypeInformation
 
             Write-Host "Writing file #: " -NoNewLine; Write-Host ($i + 1) -ForegroundColor Green -NoNewline; Write-Host " out of " -NoNewline; Write-Host $blobs.Length -ForegroundColor Yellow -NoNewline; Write-Host ". You have " -NoNewline; Write-Host ($timeleft.TotalSeconds) -NoNewline; Write-Host " seconds left on your oauth token lifespan.";  
 
