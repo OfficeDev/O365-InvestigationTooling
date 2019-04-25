@@ -20,4 +20,4 @@ foreach ($mailbox in Get-Mailbox -ResultSize Unlimited -Filter {RecipientTypeDet
 }
 
 #Double-Check It!
-Get-Mailbox -ResultSize Unlimited | Select Name, AuditEnabled, AuditLogAgeLimit | Out-Gridview
+Get-Mailbox -ResultSize Unlimited | Select Name, AuditEnabled, AuditLogAgeLimit
