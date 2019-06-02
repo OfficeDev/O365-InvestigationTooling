@@ -1,5 +1,6 @@
 ﻿#This script will allow you to execute a recommended set of steps to fully re-secure and remediate a known breached account in Office 365.
 #It peroms the following actions:
+# Removes all Azure Active Directory authenticated sessions for the user.
 # Reset password (which kills the session).
 # Remove mailbox delegates.
 # Remove mailforwarding rules to external domains.
@@ -40,7 +41,7 @@ import-module MSOnline
 
 #First, let's get us a cred!
 $adminCredential = Get-Credential
-
+    
     Write-Output "Connecting to Exchange Online Remote Powershell Service"
     $ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $adminCredential -Authentication Basic -AllowRedirection
     if ($null -ne $ExoSession) { 
@@ -64,11 +65,11 @@ Connect-MsolService -Credential $adminCredential
 [Reflection.Assembly]::LoadWithPartialName("System.Web") 
 
 function Remove-AADTokens($upn) {
-    Get-AzureADUser -ObjectID $upn | Set-AzureADUser -AccountEnabled $false
+    Get-MsolUser -UserPrincipalName $upn | Set-AzureADUser -AccountEnabled $false
     Write-Output "We are going to temporarily disable this user."
-    Get-AzureADUser -ObjectID $upn | Revoke-AzureADUserAllRefreshToken
+    Get-MsolUser -UserPrincipalName $upn | Revoke-AzureADUserAllRefreshToken
     Write-Output "We are going to delete all Azure Active Directory authentication tokens for this user to ensure all Azure Active Directory authenticated sessions for this user are deleted immediately."
-    Get-AzureADUser -ObjectID $upn | Set-AzureADUser -AccountEnabled $true
+    Get-MsolUser -UserPrincipalName $upn | Set-AzureADUser -AccountEnabled $true
     Write-Output "We are going to enable this user."
     
 }
