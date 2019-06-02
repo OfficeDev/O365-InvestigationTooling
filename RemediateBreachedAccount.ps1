@@ -64,11 +64,11 @@ Connect-MsolService -Credential $adminCredential
 [Reflection.Assembly]::LoadWithPartialName("System.Web") 
 
 function Remove-AADTokens($upn) {
-    Get-AzureADUser -All $true | where {$_.UserPrincipalName -match $upn} | Set-AzureADUser -AccountEnabled $false
+    Get-AzureADUser -ObjectID $upn | Set-AzureADUser -AccountEnabled $false
     Write-Output "We are going to temporarily disable this user."
-    Get-AzureADUser -All $true | where {$_.UserPrincipalName -match $upn} | Revoke-AzureADUserAllRefreshToken
+    Get-AzureADUser -ObjectID $upn | Revoke-AzureADUserAllRefreshToken
     Write-Output "We are going to delete all Azure Active Directory authentication tokens for this user to ensure all Azure Active Directory authenticated sessions for this user are deleted immediately."
-    Get-AzureADUser -All $true | where {$_.UserPrincipalName -match $upn} | Set-AzureADUser -AccountEnabled $true
+    Get-AzureADUser -ObjectID $upn | Set-AzureADUser -AccountEnabled $true
     Write-Output "We are going to enable this user."
     
 }
