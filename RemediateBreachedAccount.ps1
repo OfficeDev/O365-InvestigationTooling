@@ -63,6 +63,16 @@ Connect-MsolService -Credential $adminCredential
 #Load "System.Web" assembly in PowerShell console 
 [Reflection.Assembly]::LoadWithPartialName("System.Web") 
 
+function Remove-AADTokens($upn) {
+    Get-AzureADUser -All $true | where {$_.UserPrincipalName -match $upn} | Set-AzureADUser -AccountEnabled $false
+    Write-Output "We are going to temporarily disable this user."
+    Get-AzureADUser -All $true | where {$_.UserPrincipalName -match $upn} | Revoke-AzureADUserAllRefreshToken
+    Write-Output "We are going to delete all Azure Active Directory authentication tokens for this user to ensure all Azure Active Directory authenticated sessions for this user are deleted immediately."
+    Get-AzureADUser -All $true | where {$_.UserPrincipalName -match $upn} | Set-AzureADUser -AccountEnabled $true
+    Write-Output "We are going to enable this user."
+    
+}
+
 function Reset-Password($upn) {
     $newPassword = ([System.Web.Security.Membership]::GeneratePassword(16,2))
     Set-MsolUserPassword –UserPrincipalName $upn –NewPassword $newPassword -ForceChangePassword $True
@@ -175,6 +185,7 @@ function Get-AuditLog ($upn) {
 
 }
 
+Remove-AADTokens $upn
 Reset-Password $upn
 Enable-MailboxAuditing $upn
 Remove-MailboxDelegates $upn
