@@ -8,6 +8,7 @@
 # Enable MFA on the user's account.
 # Set password complexity on the account to be high.
 # Enable mailbox auditing.
+# Enable the Office 365 Unified Log.
 # Produce Audit Log for the admin to review.
 #$upn = "Brandon@a830edad9050849NDA3313.onmicrosoft.com"
 
@@ -95,6 +96,15 @@ function Enable-MailboxAuditing($upn) {
     Write-Output "Done! Here's the current configuration for auditing."    
     #Double-Check It!
     Get-Mailbox -Identity $upn | Select Name, AuditEnabled, AuditLogAgeLimit
+}
+
+function Enable-Office365UnifiedLog {
+    Write-Output "##############################################################"
+    Write-Output "We are going to enable Office 365 Unified Log to ensure we can monitor activity going forward."
+    
+    Enable-OrganizationCustomization
+    Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true
+    
 }
 
 function Remove-MailboxDelegates($upn) {
@@ -189,6 +199,7 @@ function Get-AuditLog ($upn) {
 Remove-AADTokens $upn
 Reset-Password $upn
 Enable-MailboxAuditing $upn
+Enable-Office365UnifiedLog
 Remove-MailboxDelegates $upn
 Disable-MailforwardingRulesToExternalDomains $upn
 Remove-MailboxForwarding $upn
