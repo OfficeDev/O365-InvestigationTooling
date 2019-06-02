@@ -1,5 +1,6 @@
 ﻿#This script will allow you to execute a recommended set of steps to fully re-secure and remediate a known breached account in Office 365.
 #It peroms the following actions:
+# Removes all Azure Active Directory authenticated sessions for the user.
 # Reset password (which kills the session).
 # Remove mailbox delegates.
 # Remove mailforwarding rules to external domains.
@@ -7,6 +8,7 @@
 # Enable MFA on the user's account.
 # Set password complexity on the account to be high.
 # Enable mailbox auditing.
+# Enable the Office 365 Unified Log.
 # Produce Audit Log for the admin to review.
 #$upn = "Brandon@a830edad9050849NDA3313.onmicrosoft.com"
 
@@ -40,7 +42,7 @@ import-module MSOnline
 
 #First, let's get us a cred!
 $adminCredential = Get-Credential
-
+    
     Write-Output "Connecting to Exchange Online Remote Powershell Service"
     $ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $adminCredential -Authentication Basic -AllowRedirection
     if ($null -ne $ExoSession) { 
@@ -63,6 +65,16 @@ Connect-MsolService -Credential $adminCredential
 #Load "System.Web" assembly in PowerShell console 
 [Reflection.Assembly]::LoadWithPartialName("System.Web") 
 
+function Remove-AADTokens($upn) {
+    Get-MsolUser -UserPrincipalName $upn | Set-AzureADUser -AccountEnabled $false
+    Write-Output "We are going to temporarily disable this user."
+    Get-MsolUser -UserPrincipalName $upn | Revoke-AzureADUserAllRefreshToken
+    Write-Output "We are going to delete all Azure Active Directory authentication tokens for this user to ensure all Azure Active Directory authenticated sessions for this user are deleted immediately."
+    Get-MsolUser -UserPrincipalName $upn | Set-AzureADUser -AccountEnabled $true
+    Write-Output "We are going to enable this user."
+    
+}
+
 function Reset-Password($upn) {
     $newPassword = ([System.Web.Security.Membership]::GeneratePassword(16,2))
     Set-MsolUserPassword –UserPrincipalName $upn –NewPassword $newPassword -ForceChangePassword $True
@@ -84,6 +96,15 @@ function Enable-MailboxAuditing($upn) {
     Write-Output "Done! Here's the current configuration for auditing."    
     #Double-Check It!
     Get-Mailbox -Identity $upn | Select Name, AuditEnabled, AuditLogAgeLimit
+}
+
+function Enable-Office365UnifiedLog {
+    Write-Output "##############################################################"
+    Write-Output "We are going to enable Office 365 Unified Log to ensure we can monitor activity going forward."
+    
+    Enable-OrganizationCustomization
+    Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true
+    
 }
 
 function Remove-MailboxDelegates($upn) {
@@ -175,8 +196,10 @@ function Get-AuditLog ($upn) {
 
 }
 
+Remove-AADTokens $upn
 Reset-Password $upn
 Enable-MailboxAuditing $upn
+Enable-Office365UnifiedLog
 Remove-MailboxDelegates $upn
 Disable-MailforwardingRulesToExternalDomains $upn
 Remove-MailboxForwarding $upn
