@@ -1,12 +1,16 @@
-﻿import-module MSOnline
+﻿#Import MSOline Module
+ import-module MSOnline
+ #Import Exchange Online Module
+ Import-Module $((Get-ChildItem -Path $($env:LOCALAPPDATA + "\Apps\2.0\") -Filter Microsoft.Exchange.Management.ExoPowershellModule.dll -Recurse).FullName | ?{ $_ -notmatch "_none_" } | select -First 1)
 
-#Let's get us an admin cred!
-$userCredential = Get-Credential
 
-#This connects to Azure Active Directory
-Connect-MsolService -Credential $userCredential
-$ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $userCredential -Authentication Basic -AllowRedirection
-Import-PSSession $ExoSession
+#Set admin UPN
+$UPN = 'user@domain.com'
+
+#This connects to Azure Active Directory & Exchange Online
+Connect-MsolService
+$EXOSession = New-ExoPSSession -UserPrincipalName $UPN
+Import-PSSession $EXOSession -AllowClobber
 
 $startDate = (Get-Date).AddDays(-90).ToString('MM/dd/yyyy')
 $endDate = (Get-Date).ToString('MM/dd/yyyy')
