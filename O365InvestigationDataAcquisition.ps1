@@ -67,7 +67,7 @@ Function Get-GlobalConfig( $configFile)
 }
 
 #UPDATE Location to the Global Config File"
-$globalConfigFile="C:\O365-InvestigationTooling\ConfigForO365Investigations.json";
+$globalConfigFile = "$PSScriptRoot\ConfigForO365Investigations.json";
 $globalConfig = Get-GlobalConfig $globalConfigFile
 
 #Pre-reqs for REST API calls
@@ -108,8 +108,7 @@ else
 $hours = @("00:00Z", "01:00Z", "02:00Z", "03:00Z", "04:00Z", "05:00Z", "06:00Z", "07:00Z", "08:00Z", "09:00Z", "10:00Z", "11:00Z", "12:00Z", "13:00Z", "14:00Z", "15:00Z", "16:00Z", "17:00Z", "18:00Z", "19:00Z", "20:00Z", "21:00Z", "22:00Z", "23:00Z", "23:59:59Z")
 foreach ($day in $days) { foreach ($hour in $hours) { $dateRange += $day + "T" + $hour; }}
 
-#$workLoads = @("Audit.AzureActiveDirectory", "Audit.Exchange", "Audit.SharePoint", "Audit.General", "DLP.All")
-$workLoads = @("Audit.Exchange", "Audit.SharePoint")
+$workLoads = @("Audit.AzureActiveDirectory", "Audit.Exchange", "Audit.SharePoint", "Audit.General", "DLP.All")
 $subs = @()
 $global:blobs = @()
 $wlCount = @()
@@ -124,7 +123,22 @@ $rawRef = @()
 
 
 #Let's make sure we have the Activity API subscriptions turned on
-$subs = Invoke-WebRequest -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/list" | Select Content
+Write-Host "Let's turn on your subscriptions now." -ForegroundColor Yellow
+Write-Host "#####################################################"
+            
+#Let's make sure the subscriptions are started
+foreach ($wl in $workLoads){
+        Invoke-RestMethod -Method Post -Headers $headerParams -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$wl"
+}
+        
+Write-Host "#####################################################"
+Write-Host "Subscriptions status:" -ForegroundColor Yellow
+Write-Host "#####################################################"
+$subs = Invoke-WebRequest -Headers $headerParams -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/list" | Select Content
+$subs.content.split(",")
+Write-Host "#####################################################"
+
+<#
 
 if (!$subs -or $subs.Content -eq "[]")
 {
@@ -134,12 +148,13 @@ if (!$subs -or $subs.Content -eq "[]")
     #Let's make sure the subscriptions are started
     foreach ($wl in $workLoads)
         {
-            Invoke-RestMethod -Method Post -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$wl"
+            Invoke-RestMethod -Method Post -Headers $headerParams -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$wl"
         }
         
     Write-Host "#####################################################"
 
 }
+#>
 
 #Let's go get some datums! First, let's construct some query parameters
 foreach ($wl in $workLoads)
@@ -162,7 +177,7 @@ foreach ($wl in $workLoads)
 #Then execute the content enumeration method per workload, per day
 foreach ($pull in $apiFilters)
 {
-    $rawRef = Invoke-WebRequest -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/content$pull"
+    $rawRef = Invoke-WebRequest -Headers $headerParams -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/content$pull"
     if ($rawRef.Headers.NextPageUri) 
     {
         $pageTracker = $true
