@@ -66,7 +66,8 @@ Function Get-GlobalConfig( $configFile)
     return $config;
 }
 
-$globalConfigFile=".\ConfigForO365Investigations.json";
+#UPDATE Location to the Global Config File"
+$globalConfigFile = "$PSScriptRoot\ConfigForO365Investigations.json";
 $globalConfig = Get-GlobalConfig $globalConfigFile
 
 #Pre-reqs for REST API calls
@@ -122,7 +123,22 @@ $rawRef = @()
 
 
 #Let's make sure we have the Activity API subscriptions turned on
-$subs = Invoke-WebRequest -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/list" | Select Content
+Write-Host "Let's turn on your subscriptions now." -ForegroundColor Yellow
+Write-Host "#####################################################"
+            
+#Let's make sure the subscriptions are started
+foreach ($wl in $workLoads){
+        Invoke-RestMethod -Method Post -Headers $headerParams -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$wl"
+}
+        
+Write-Host "#####################################################"
+Write-Host "Subscriptions status:" -ForegroundColor Yellow
+Write-Host "#####################################################"
+$subs = Invoke-WebRequest -Headers $headerParams -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/list" | Select Content
+$subs.content.split(",")
+Write-Host "#####################################################"
+
+<#
 
 if (!$subs -or $subs.Content -eq "[]")
 {
@@ -132,12 +148,13 @@ if (!$subs -or $subs.Content -eq "[]")
     #Let's make sure the subscriptions are started
     foreach ($wl in $workLoads)
         {
-            Invoke-RestMethod -Method Post -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$wl"
+            Invoke-RestMethod -Method Post -Headers $headerParams -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/start?contentType=$wl"
         }
         
     Write-Host "#####################################################"
 
 }
+#>
 
 #Let's go get some datums! First, let's construct some query parameters
 foreach ($wl in $workLoads)
@@ -160,7 +177,7 @@ foreach ($wl in $workLoads)
 #Then execute the content enumeration method per workload, per day
 foreach ($pull in $apiFilters)
 {
-    $rawRef = Invoke-WebRequest -Headers $headerParams -Uri "https://manage.office.com/api/v1.0/$tenantGUID/activity/feed/subscriptions/content$pull"
+    $rawRef = Invoke-WebRequest -Headers $headerParams -Uri "$resource/api/v1.0/$tenantGUID/activity/feed/subscriptions/content$pull"
     if ($rawRef.Headers.NextPageUri) 
     {
         $pageTracker = $true
@@ -214,19 +231,19 @@ foreach ($wl in $workLoads)
 #This will write the files from the API to the local data store.
 function Export-LocalFiles ($blobs) {
     #Let's make some output directories
-    if (! (Test-Path ".\JSON"))
+    if (! (Test-Path "$($globalConfig.LocalFileDirectory)\JSON"))
         {
-            New-Item -Path .\JSON -ItemType Directory
+            New-Item -Path "$($globalConfig.LocalFileDirectory)\JSON" -ItemType Directory
         }
 
-    if (! (Test-Path ".\CSV"))
+    if (! (Test-Path "$($globalConfig.LocalFileDirectory)\CSV"))
         {
-            New-Item -Path .\CSV -ItemType Directory
+            New-Item -Path "$($globalConfig.LocalFileDirectory)\CSV" -ItemType Directory
         }
 
     #Let's build a variable full of the files already in the local store
     $localfiles = @()
-    $localFiles = Get-ChildItem $globalConfig.LocalFileStore -Recurse | Select-Object -Property Name
+    $localFiles = Get-ChildItem "$($globalConfig.LocalFileDirectory)$($globalConfig.LocalFileStore)" -Recurse | Select-Object -Property Name
     
 
     $body = @{grant_type="client_credentials";resource=$resource;client_id=$ClientID;client_secret=$ClientSecret}
@@ -260,11 +277,11 @@ function Export-LocalFiles ($blobs) {
             $thisBlobdata = Invoke-WebRequest -Headers $headerParams -Uri $blobs[$i].contentUri
         
             #Write it to JSON
-            $thisBlobdata.Content | Out-File (".\JSON\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".json")
+            $thisBlobdata.Content | Out-File ("$($globalConfig.LocalFileDirectory)\JSON\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".json")
         
             #Write it to CSV
             $altFormat = $thisBlobdata.Content | ConvertFrom-Json
-            $altFormat | Export-Csv -Path (".\CSV\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".csv") -NoTypeInformation
+            $altFormat | Export-Csv -Path ("$($globalConfig.LocalFileDirectory)\CSV\" + $blobs[$i].contentType + $blobs[$i].contentCreated.Substring(0,10) + "--" + $blobs[$i].contentID + ".csv") -NoTypeInformation
 
             Write-Host "Writing file #: " -NoNewLine; Write-Host ($i + 1) -ForegroundColor Green -NoNewline; Write-Host " out of " -NoNewline; Write-Host $blobs.Length -ForegroundColor Yellow -NoNewline; Write-Host ". You have " -NoNewline; Write-Host ($timeleft.TotalSeconds) -NoNewline; Write-Host " seconds left on your oauth token lifespan.";  
 
