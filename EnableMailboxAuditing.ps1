@@ -1,4 +1,5 @@
-#This script will enable non-owner mailbox access auditing on every mailbox in your tenancy
+#This script will set the auditing to the default Microsoft Set of Auditing
+#https://docs.microsoft.com/en-us/office365/securitycompliance/enable-mailbox-auditing
 #First, let's get us a cred!
 $userCredential = Get-Credential
 
@@ -7,11 +8,15 @@ $ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri
 Import-PSSession $ExoSession -Name Get-Mailbox, Set-Mailbox
 
 #Enable global audit logging
-foreach ($mailbox in Get-Mailbox -ResultSize Unlimited -Filter {RecipientTypeDetails -eq "UserMailbox" -or RecipientTypeDetails -eq "SharedMailbox" -or RecipientTypeDetails -eq "RoomMailbox" -or RecipientTypeDetails -eq "DiscoveryMailbox"})
+#Get all User, Shared, Room and Discovery mailbox
+$mailboxes = Get-Mailbox -ResultSize Unlimited -Filter {RecipientTypeDetails -eq "UserMailbox" -or RecipientTypeDetails -eq "SharedMailbox" -or RecipientTypeDetails -eq "RoomMailbox" -or RecipientTypeDetails -eq "DiscoveryMailbox"}) | Select-Object ExternalDirectoryObjectId
+foreach ($mailbox in $mailboxes)
 {
     try
     {
-        Set-Mailbox -Identity $mailbox.DistinguishedName -AuditEnabled $true -AuditLogAgeLimit 180 -AuditAdmin Update, MoveToDeletedItems, SoftDelete, HardDelete, SendAs, SendOnBehalf, Create, UpdateFolderPermission -AuditDelegate Update, SoftDelete, HardDelete, SendAs, Create, UpdateFolderPermissions, MoveToDeletedItems, SendOnBehalf -AuditOwner UpdateFolderPermission, MailboxLogin, Create, SoftDelete, HardDelete, Update, MoveToDeletedItems
+        #Use the ExternalDirectoryObjectId to set the mailbox for setting the correct item
+        #Set them to the default set
+        Set-Mailbox -Identity $mailbox.ExternalDirectoryObjectId -AuditEnabled $true -AuditLogAgeLimit 180 -DefaultAuditSet Admin,Delegate,Owner
     }
     catch
     {
@@ -20,4 +25,4 @@ foreach ($mailbox in Get-Mailbox -ResultSize Unlimited -Filter {RecipientTypeDet
 }
 
 #Double-Check It!
-Get-Mailbox -ResultSize Unlimited | Select Name, AuditEnabled, AuditLogAgeLimit
+Get-Mailbox -ResultSize Unlimited | Select Name, AuditEnabled, AuditLogAgeLimit, DefaultAuditSet | Export-Csv -Path mailboxaudit.csv -Delimiter ';'
