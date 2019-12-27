@@ -1,13 +1,3 @@
----
-topic: sample
-products:
-- office-365
-languages:
-- powershell
-extensions:
-  contentType: tools
-  createdDate: 2/11/2016 4:22:37 PM
----
 # O365-InvestigationTooling
 
 This project is to help faciliate testing and low-volume activity data acquisition from the Office 365 Management
