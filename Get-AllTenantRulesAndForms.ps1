@@ -2,7 +2,7 @@
 # Get-AllTenantRulesAndForms.ps1
 # 
 # Dumps all Rules and custom forms from all mailboxes in an Office 365 tenancy
-# Script requires user with Global Admin role assignment (which is better than impersonation)
+# Script requires user with Global Admin role assignment and ApplicationImpersonation role
 #
 ######################################### 
 
