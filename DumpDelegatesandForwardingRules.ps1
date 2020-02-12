@@ -1,14 +1,7 @@
-﻿#Import the right module to talk with AAD
-import-module MSOnline
+#Launch the Microsoft Exchange Online PowerShell Module 
+#https://docs.microsoft.com/en-us/powershell/exchange/exchange-online/connect-to-exchange-online-powershell/mfa-connect-to-exchange-online-powershell?view=exchange-ps
 
-#Let's get us an admin cred!
-$userCredential = Get-Credential
-
-#This connects to Azure Active Directory
-Connect-MsolService -Credential $userCredential
-
-$ExoSession = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $userCredential -Authentication Basic -AllowRedirection
-Import-PSSession $ExoSession
+Connect-MsolService
 
 $allUsers = @()
 $AllUsers = Get-MsolUser -All -EnabledFilter EnabledOnly | select ObjectID, UserPrincipalName, FirstName, LastName, StrongAuthenticationRequirements, StsRefreshTokensValidFrom, StrongPasswordRequired, LastPasswordChangeTimestamp | Where-Object {($_.UserPrincipalName -notlike "*#EXT#*")}
