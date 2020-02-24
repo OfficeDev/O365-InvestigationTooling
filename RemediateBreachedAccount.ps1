@@ -1,5 +1,5 @@
 ﻿#This script will allow you to execute a recommended set of steps to fully re-secure and remediate a known breached account in Office 365.
-#It peroms the following actions:
+#It performs the following actions:
 # Reset password (which kills the session).
 # Remove mailbox delegates.
 # Remove mailforwarding rules to external domains.
