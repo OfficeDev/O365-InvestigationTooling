@@ -166,13 +166,13 @@ Function RemoveUser($upn)
 
 
 Write-Host "This PowerShell script was created by the Office 365 security team to help customers remediate the risk of an employee leaving the company." 
-Write-Host "To learn more about to perform the same manually please take a look at:"
+Write-Host "To learn more about this or to perform the same manually please take a look at:"
 Write-Host "https://support.office.com/en-US/article/How-to-block-employee-access-to-Office-365-data-44d96212-4d90-4027-9aa9-a95eddb367d1?ui=en-US&rs=en-US&ad=US"
 Write-Host " "
 Write-Host "Please enter your name of your domain without the Top Level Domain (.com, .org, .net, etc.). "
 Write-Host "For example if you work at contoso.com, please enter only Contoso"
 $domainName = Read-Host -Prompt 'Domain Name (Without Top Level Domain)'
-Write-Host "Enter your Admin Credentials, please note you will be prompted twice (One for O365 Exchange and one for AAD)"
+Write-Host "Enter your Admin Credentials, please note you will be prompted twice (Once for O365 Exchange and once for AAD)"
 #MyStart -domainName $domainName
 ReviewExecutionPolicy
 $adminCreds = InitiateSession -domainName $domainName
