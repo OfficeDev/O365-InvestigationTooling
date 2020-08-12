@@ -25,6 +25,6 @@ foreach ($User in $allUsers)
 
 $SMTPForwarding = Get-Mailbox -ResultSize Unlimited | select DisplayName,ForwardingAddress,ForwardingSMTPAddress,DeliverToMailboxandForward | where {$_.ForwardingSMTPAddress -ne $null}
 
-$UserInboxRules | Export-Csv MailForwardingRulesToExternalDomains.csv
-$UserDelegates | Export-Csv MailboxDelegatePermissions.csv
-$SMTPForwarding | Export-Csv Mailboxsmtpforwarding.csv
+$UserInboxRules | Export-Csv MailForwardingRulesToExternalDomains.csv -NoClobber -NoTypeInformation
+$UserDelegates | Export-Csv MailboxDelegatePermissions.csv -NoClobber -NoTypeInformation
+$SMTPForwarding | Export-Csv Mailboxsmtpforwarding.csv -NoClobber -NoTypeInformation
