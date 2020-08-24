@@ -1,22 +1,25 @@
-﻿#Import MSOline Module
- import-module MSOnline
- #Import Exchange Online Module
- Import-Module $((Get-ChildItem -Path $($env:LOCALAPPDATA + "\Apps\2.0\") -Filter Microsoft.Exchange.Management.ExoPowershellModule.dll -Recurse).FullName | ?{ $_ -notmatch "_none_" } | select -First 1)
+#This script requires the AzureAD and ExchangeOnlineManagement modules
+#install them like this:
+# Install-Module -Name AzureAD
+# Install-Module -Name ExchangeOnlineManagement -RequiredVersion 1.0.1
 
+#Import AzureAD Module
+Import-Module AzureAD
+#Import Exchange Online Module
+Import-Module ExchangeOnlineManagement
 
 #Set admin UPN
 $UPN = 'user@domain.com'
 
 #This connects to Azure Active Directory & Exchange Online
-Connect-MsolService
-$EXOSession = New-ExoPSSession -UserPrincipalName $UPN
-Import-PSSession $EXOSession -AllowClobber
+Connect-AzureAD -AccountID $UPN
+$EXOSession = Connect-ExchangeOnline -UserPrincipalName $UPN
 
 $startDate = (Get-Date).AddDays(-90).ToString('MM/dd/yyyy')
 $endDate = (Get-Date).ToString('MM/dd/yyyy')
 
 $allUsers = @()
-$allUsers = Get-MsolUser -All -EnabledFilter EnabledOnly | Select UserPrincipalName
+$allUsers = Get-AzureADUser -All $true -Filter "AccountEnabled eq true" | Select UserPrincipalName
 
 $loggedOnUsers = @()
 $loggedOnUsers = Search-UnifiedAuditLog -StartDate $startDate -EndDate $endDate -Operations UserLoggedIn, PasswordLogonInitialAuthUsingPassword, UserLoginFailed -ResultSize 5000
@@ -27,3 +30,5 @@ $inactiveInLastThreeMonthsUsers = $allUsers.UserPrincipalName | where {$loggedOn
 Write-Output "The following users have no logged in for the last 90 days:"
 Write-Output $inactiveInLastThreeMonthsUsers
 
+#Disconnect from EXO
+Disconnect-ExchangeOnline
